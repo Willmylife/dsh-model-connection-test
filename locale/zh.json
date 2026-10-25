@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "title": "模型连接测试",
+    "description": "在设置 → 模型底部为每个已配置模型发起一次最小对话请求，报告连通性、失败原因与首字/总耗时。凭据只留在宿主进程内。"
+  },
+  "panelTitle": "模型连接测试",
+  "panelIntro": "对每个模型发送一次最小对话请求（“ping”，输出上限很小），以真实请求验证连通性。结果仅供参考延迟量级。",
+  "refresh": "刷新目录",
+  "testAll": "全部测试",
+  "testOne": "测试",
+  "testing": "测试中…",
+  "idle": "未测试",
+  "okLabel": "已连通",
+  "failLabel": "失败",
+  "firstToken": "首字",
+  "total": "总耗时",
+  "defaultTag": "默认",
+  "catalogLoading": "正在读取模型目录…",
+  "catalogError": "无法读取模型目录",
+  "noModels": "没有可测试的模型",
+  "catalogFailures": "目录报告这些提供商暂不可用：",
+  "hostUnreachable": "无法连接插件宿主接口",
+  "requestFailed": "请求失败"
+}
