@@ -106,7 +106,7 @@ window.__ModuleLoader__.load({
 .mct-groupId{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);word-break:break-all;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mct-rows{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .mct-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md)}
-.mct-modelName{font-size:13px;line-height:20px;flex:none}
+.mct-modelName{font-size:13px;line-height:20px;flex:none;font-weight:400;color:var(--dsw-alias-label-secondary)}
 .mct-modelId{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);word-break:break-all;min-width:0}
 .mct-tag{border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-xs);color:var(--dsw-alias-label-secondary);padding:1px 6px;font-size:11px;line-height:16px;flex:none}
 .mct-spacer{margin-left:auto;flex:none}
