@@ -15,6 +15,8 @@
   "firstToken": "首个输出",
   "total": "总耗时",
   "defaultTag": "默认",
+  "expandGroup": "展开分组",
+  "collapseGroup": "收起分组",
   "catalogLoading": "正在读取模型目录…",
   "catalogError": "无法读取模型目录",
   "noModels": "没有可测试的模型",

@@ -37,6 +37,8 @@ window.__ModuleLoader__.load({
       firstToken: '首个输出',
       total: '总耗时',
       defaultTag: '默认',
+      expandGroup: '展开分组',
+      collapseGroup: '收起分组',
       catalogLoading: '正在读取模型目录…',
       catalogError: '无法读取模型目录',
       noModels: '没有可测试的模型',
@@ -57,6 +59,8 @@ window.__ModuleLoader__.load({
       firstToken: 'first output',
       total: 'total',
       defaultTag: 'default',
+      expandGroup: 'Expand group',
+      collapseGroup: 'Collapse group',
       catalogLoading: 'Loading the model catalog…',
       catalogError: 'Failed to load the model catalog',
       noModels: 'No testable models',
@@ -92,7 +96,12 @@ window.__ModuleLoader__.load({
 .mct-error{color:var(--dsw-alias-state-warn-label);font-size:12px;line-height:18px;margin:0}
 .mct-groups{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
 .mct-group{display:flex;flex-direction:column;gap:6px}
-.mct-groupHead{display:flex;align-items:baseline;gap:8px}
+.mct-groupHead{display:flex;align-items:center;gap:8px;min-width:0}
+.mct-groupToggle{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.mct-groupToggle:hover .mct-groupName{text-decoration:underline;text-underline-offset:2px}
+.mct-groupToggle:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:3px;border-radius:var(--dsw-radius-xs)}
+.mct-chevron{width:7px;height:7px;flex:none;border:solid var(--dsw-alias-label-secondary);border-width:0 1.5px 1.5px 0;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}
+.mct-chevronCollapsed{transform:rotate(-45deg) translateY(2px)}
 .mct-groupName{font-size:13px;font-weight:500;line-height:20px}
 .mct-groupId{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);word-break:break-all}
 .mct-rows{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
@@ -177,6 +186,14 @@ window.__ModuleLoader__.load({
       const [loading, setLoading] = React.useState(true);
       const [results, setResults] = React.useState({});
       const [runningAll, setRunningAll] = React.useState(false);
+      const [collapsedGroups, setCollapsedGroups] = React.useState({});
+
+      const toggleGroup = React.useCallback((groupId) => {
+        setCollapsedGroups((previous) => ({
+          ...previous,
+          [groupId]: previous[groupId] !== true,
+        }));
+      }, []);
 
       const loadCatalog = React.useCallback(async () => {
         setLoading(true);
@@ -293,17 +310,39 @@ window.__ModuleLoader__.load({
           ? h('p', { className: 'mct-meta' }, t('noModels'))
           : null,
         catalog && routableGroups.length > 0
-          ? h('ul', { className: 'mct-groups' }, routableGroups.map((group) =>
-              h('li', { className: 'mct-group', key: group.id },
+          ? h('ul', { className: 'mct-groups' }, routableGroups.map((group, groupIndex) => {
+              const collapsed = collapsedGroups[group.id] === true;
+              const groupModelsId = `mct-models-${groupIndex}`;
+              const groupLabel = group.name || group.id;
+              return h('li', { className: 'mct-group', key: group.id },
                 h('div', { className: 'mct-groupHead' },
-                  h('span', { className: 'mct-groupName' }, group.name || group.id),
-                  h('span', { className: 'mct-groupId' }, group.id),
-                  h('span', { className: 'mct-tag' }, `${(group.models || []).length}`),
+                  h('button', {
+                    type: 'button',
+                    className: 'mct-groupToggle',
+                    'aria-expanded': !collapsed,
+                    'aria-controls': groupModelsId,
+                    'aria-label': `${collapsed ? t('expandGroup') : t('collapseGroup')}: ${groupLabel}`,
+                    onClick: () => toggleGroup(group.id),
+                  },
+                    h('span', {
+                      className: `mct-chevron${collapsed ? ' mct-chevronCollapsed' : ''}`,
+                      'aria-hidden': true,
+                    }),
+                    h('span', { className: 'mct-groupName' }, groupLabel),
+                    h('span', { className: 'mct-groupId' }, group.id),
+                  ),
+                  h('span', {
+                    className: 'mct-tag',
+                    title: `${(group.models || []).length}`,
+                  }, `${(group.models || []).length}`),
                 ),
-                h('ul', { className: 'mct-rows' }, (group.models || []).map((model) => {
+                collapsed ? null : h('ul', {
+                  className: 'mct-rows',
+                  id: groupModelsId,
+                }, (group.models || []).map((model) => {
                   const target = {
                     provider: group.id,
-                    providerName: group.name || group.id,
+                    providerName: groupLabel,
                     model: model.id,
                     modelName: model.name || model.id,
                   };
@@ -317,7 +356,8 @@ window.__ModuleLoader__.load({
                     defaultTag: isDefault ? t('defaultTag') : null,
                   });
                 })),
-              )))
+              );
+            }))
           : null,
         failures.length > 0
           ? h('dl', { className: 'mct-failures' },
