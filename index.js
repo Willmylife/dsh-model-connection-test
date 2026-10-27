@@ -27,7 +27,7 @@ const ROUTE_TEST = '/model-connection-test/api/test';
 const ROUTE_HEALTH = '/model-connection-test/api/health';
 
 const MAX_BODY_BYTES = 4096;
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 60000;
 const MIN_TIMEOUT_MS = 1000;
 const MAX_TIMEOUT_MS = 120000;
 const DEFAULT_MAX_TOKENS = 16;
@@ -170,15 +170,20 @@ async function probeModel(llm, target) {
     });
     for await (const chunk of stream) {
       chunks += 1;
-      if (firstMs === undefined) firstMs = Date.now() - started;
+      if (
+        firstMs === undefined
+        && chunk
+        && ['text-delta', 'reasoning-delta', 'tool-call-delta'].includes(chunk.type)
+      ) firstMs = Date.now() - started;
       if (chunk && chunk.type === 'finish') {
         const reason = chunk.reason;
         const totalMs = Date.now() - started;
-        if (reason && reason.kind === 'finish') {
+        if (reason && ['stop', 'max-tokens', 'tool-calls'].includes(reason.kind)) {
           return {
             ok: true,
             code: null,
-            message: `stream completed after ${chunks} chunk(s)`,
+            message: `stream completed with ${reason.kind} after ${chunks} chunk(s)`,
+            finishReason: reason.kind,
             totalMs,
             firstMs,
             timedOut: false,
@@ -189,12 +194,18 @@ async function probeModel(llm, target) {
           ? 'TIMEOUT'
           : typeof (failure && failure.code) === 'string'
             ? failure.code
-            : 'UNKNOWN';
+            : reason && reason.kind === 'aborted'
+              ? 'ABORTED'
+              : reason && reason.kind === 'error'
+                ? 'LLM_ERROR'
+                : 'UNEXPECTED_FINISH_REASON';
         const message =
           typeof (failure && failure.message) === 'string' && failure.message
             ? failure.message
-            : `stream ended with ${reason && reason.kind}`;
-        return { ok: false, code, message, totalMs, firstMs, timedOut };
+            : reason && typeof reason.kind === 'string'
+              ? `stream ended with ${reason.kind}`
+              : `stream returned an invalid finish reason: ${JSON.stringify(reason)}`;
+        return { ok: false, code, message, finishReason: reason && reason.kind, totalMs, firstMs, timedOut };
       }
     }
     return {

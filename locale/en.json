@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Model Connection Test",
-    "description": "Adds a connection-test panel under Settings -> Models: one minimal chat round-trip per configured model, with failure codes and first-token/total latency. Credentials never leave the Host process."
+    "description": "Adds a connection-test panel under Settings -> Models: one minimal chat round-trip per configured model, with failure codes and first-output/total latency. Credentials never leave the Host process."
   },
   "panelTitle": "Model connection test",
   "panelIntro": "Sends one minimal chat request (\"ping\", small output cap) per model to verify connectivity with a real request. Latency numbers indicate magnitude only.",
@@ -12,7 +12,7 @@
   "idle": "Not tested",
   "okLabel": "Connected",
   "failLabel": "Failed",
-  "firstToken": "first token",
+  "firstToken": "first output",
   "total": "total",
   "defaultTag": "default",
   "catalogLoading": "Loading the model catalog…",
