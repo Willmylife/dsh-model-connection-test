@@ -321,6 +321,7 @@ window.__ModuleLoader__.load({
               const collapsed = collapsedGroups === null || collapsedGroups[group.id] === true;
               const groupModelsId = `mct-models-${groupIndex}`;
               const groupLabel = group.name || group.id;
+              const showGroupId = groupLabel.trim().toLocaleLowerCase() !== group.id.trim().toLocaleLowerCase();
               return h('li', { className: 'mct-group', key: group.id },
                 h('div', { className: 'mct-groupHead' },
                   h('button', {
@@ -336,7 +337,7 @@ window.__ModuleLoader__.load({
                       className: `mct-chevron${collapsed ? ' mct-chevronCollapsed' : ''}`,
                       'aria-hidden': true,
                     }),
-                    h('span', { className: 'mct-groupId' }, group.id),
+                    showGroupId ? h('span', { className: 'mct-groupId' }, group.id) : null,
                   ),
                   h('span', {
                     className: 'mct-tag',

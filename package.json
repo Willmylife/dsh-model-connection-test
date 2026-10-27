@@ -1,6 +1,6 @@
 {
   "name": "dsh-model-connection-test",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Connection tests for the models configured in Settings -> Models: one minimal chat round-trip per model, with failure codes and first-output/total latency. Credentials never leave the Host process.",
   "license": "MIT",
   "type": "module",
