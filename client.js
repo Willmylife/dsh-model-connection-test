@@ -96,14 +96,14 @@ window.__ModuleLoader__.load({
 .mct-error{color:var(--dsw-alias-state-warn-label);font-size:12px;line-height:18px;margin:0}
 .mct-groups{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
 .mct-group{display:flex;flex-direction:column;gap:6px}
-.mct-groupHead{display:flex;align-items:center;gap:8px;min-width:0}
+.mct-groupHead{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-settings-card-fill)}
 .mct-groupToggle{display:flex;align-items:center;gap:8px;min-width:0;flex:1;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .mct-groupToggle:hover .mct-groupName{text-decoration:underline;text-underline-offset:2px}
 .mct-groupToggle:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:3px;border-radius:var(--dsw-radius-xs)}
 .mct-chevron{width:7px;height:7px;flex:none;border:solid var(--dsw-alias-label-secondary);border-width:0 1.5px 1.5px 0;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}
 .mct-chevronCollapsed{transform:rotate(-45deg) translateY(2px)}
-.mct-groupName{font-size:13px;font-weight:500;line-height:20px}
-.mct-groupId{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);word-break:break-all}
+.mct-groupName{font-size:14px;font-weight:600;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mct-groupId{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);word-break:break-all;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .mct-rows{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .mct-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md)}
 .mct-modelName{font-size:13px;line-height:20px;flex:none}
@@ -186,7 +186,7 @@ window.__ModuleLoader__.load({
       const [loading, setLoading] = React.useState(true);
       const [results, setResults] = React.useState({});
       const [runningAll, setRunningAll] = React.useState(false);
-      const [collapsedGroups, setCollapsedGroups] = React.useState({});
+      const [collapsedGroups, setCollapsedGroups] = React.useState(null);
 
       const toggleGroup = React.useCallback((groupId) => {
         setCollapsedGroups((previous) => ({
@@ -208,6 +208,13 @@ window.__ModuleLoader__.load({
             throw new Error((answer && answer.error && answer.error.message) || 'modelCatalog failed');
           }
           setCatalog(answer.value);
+          setCollapsedGroups((previous) => {
+            const next = {};
+            for (const group of answer.value.groups || []) {
+              next[group.id] = previous?.[group.id] ?? true;
+            }
+            return next;
+          });
         } catch (error) {
           setCatalogError(String((error && error.message) || error));
         } finally {
@@ -311,7 +318,7 @@ window.__ModuleLoader__.load({
           : null,
         catalog && routableGroups.length > 0
           ? h('ul', { className: 'mct-groups' }, routableGroups.map((group, groupIndex) => {
-              const collapsed = collapsedGroups[group.id] === true;
+              const collapsed = collapsedGroups === null || collapsedGroups[group.id] === true;
               const groupModelsId = `mct-models-${groupIndex}`;
               const groupLabel = group.name || group.id;
               return h('li', { className: 'mct-group', key: group.id },
@@ -324,11 +331,11 @@ window.__ModuleLoader__.load({
                     'aria-label': `${collapsed ? t('expandGroup') : t('collapseGroup')}: ${groupLabel}`,
                     onClick: () => toggleGroup(group.id),
                   },
+                    h('span', { className: 'mct-groupName' }, groupLabel),
                     h('span', {
                       className: `mct-chevron${collapsed ? ' mct-chevronCollapsed' : ''}`,
                       'aria-hidden': true,
                     }),
-                    h('span', { className: 'mct-groupName' }, groupLabel),
                     h('span', { className: 'mct-groupId' }, group.id),
                   ),
                   h('span', {
