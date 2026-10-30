@@ -14,7 +14,14 @@
  * Every stream ends with one terminal finish chunk; success, failure, and
  * cancellation are all reduced to one verdict shape:
  *
- *   { ok, code, message, totalMs, firstMs, timedOut }
+ *   { ok, code, message, totalMs, firstMs, timedOut, attempts, transient }
+ *
+ * A verdict may span several attempts: transient failure codes (the set the
+ * agent loop itself retries — RATE_LIMIT, SERVER, TRANSPORT, EMPTY_RESPONSE)
+ * are re-probed with a short backoff, TIMEOUT gets one extra attempt, and a
+ * configuration failure (AUTH, MISSING_CREDENTIAL, NO_ADAPTER, …) stays
+ * final on the first attempt. `transient` marks a final failure that a later
+ * retry may clear, so the UI can say "unstable" instead of "broken".
  *
  * Route fencing mirrors dsh-market: loopback/declared-authority Host check,
  * `sec-fetch-site` cross-site refusal, Origin equality when present, the
@@ -34,6 +41,24 @@ const DEFAULT_MAX_TOKENS = 16;
 const MAX_MAX_TOKENS = 256;
 const MAX_PROMPT_CHARS = 200;
 const DEFAULT_PROMPT = 'ping';
+const DEFAULT_RETRIES = 2;
+const MAX_RETRIES = 4;
+/** Backoff sleep before retry N+1, jittered; the last entry repeats. */
+const RETRY_BACKOFF_MS = [400, 900, 1500, 2200];
+/** Failure codes worth another attempt: the agent loop re-runs these too. */
+const RETRY_CODES = new Set([
+  'RATE_LIMIT',
+  'SERVER',
+  'TRANSPORT',
+  'EMPTY_RESPONSE',
+  'PROBE_ERROR',
+  'NO_TERMINAL_CHUNK',
+  'LLM_ERROR',
+]);
+/** Codes that get at most one extra attempt: a timeout already cost a full window. */
+const RETRY_ONCE_CODES = new Set(['TIMEOUT']);
+/** Final failures a later attempt may clear; the UI says "unstable", not "broken". */
+const TRANSIENT_CODES = new Set([...RETRY_CODES, ...RETRY_ONCE_CODES, 'PI_AI_ERROR']);
 
 /** Write a JSON payload with no-store caching. */
 function sendJson(response, status, payload) {
@@ -140,16 +165,24 @@ function validateTarget(body) {
     prompt = body.prompt.slice(0, MAX_PROMPT_CHARS);
     if (prompt.length === 0) prompt = DEFAULT_PROMPT;
   }
-  return { ok: true, value: { provider, model, timeoutMs, maxTokens, prompt } };
+  let retries = DEFAULT_RETRIES;
+  if (body.retries !== undefined) {
+    if (typeof body.retries !== 'number' || !Number.isInteger(body.retries) || body.retries < 0) {
+      return { ok: false, error: 'retries must be a non-negative integer' };
+    }
+    retries = Math.min(body.retries, MAX_RETRIES);
+  }
+  return { ok: true, value: { provider, model, timeoutMs, maxTokens, prompt, retries } };
 }
 
 /**
- * Stream one minimal completion through the LLM service and reduce it to a
- * verdict. The stream vocabulary stays opaque on purpose: only the terminal
- * `type: 'finish'` chunk and its `reason.kind`/`reason.failure` shape are
- * read, so chunk-kind changes upstream cannot break the probe.
+ * One probe attempt: stream one minimal completion through the LLM service
+ * and reduce it to a verdict. The stream vocabulary stays opaque on purpose:
+ * only the terminal `type: 'finish'` chunk and its `reason.kind`/
+ * `reason.failure` shape are read, so chunk-kind changes upstream cannot
+ * break the probe.
  */
-async function probeModel(llm, target) {
+async function probeAttempt(llm, target) {
   const { provider, model, timeoutMs, maxTokens, prompt } = target;
   const started = Date.now();
   const controller = new AbortController();
@@ -227,6 +260,39 @@ async function probeModel(llm, target) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Wait out one jittered backoff step. */
+function backoffDelay(attemptIndex) {
+  const base = RETRY_BACKOFF_MS[Math.min(attemptIndex, RETRY_BACKOFF_MS.length - 1)];
+  return new Promise((resolve) => setTimeout(resolve, base + Math.round(Math.random() * 200)));
+}
+
+/**
+ * Probe one model with bounded retries. A configuration failure is final on
+ * the first attempt; a transient failure is re-probed because the agent loop
+ * retries those too, so one busy second on a relay must not read as an
+ * unreachable model. The verdict adds `attempts` and `transient` on top of
+ * one attempt's shape.
+ */
+async function probeModel(llm, target) {
+  const attemptLimit = 1 + target.retries;
+  const codes = [];
+  let verdict;
+  for (let attempt = 1; attempt <= attemptLimit; attempt += 1) {
+    verdict = await probeAttempt(llm, target);
+    if (verdict.ok) break;
+    codes.push(verdict.code);
+    const canRetry =
+      RETRY_CODES.has(verdict.code) || (RETRY_ONCE_CODES.has(verdict.code) && attempt === 1);
+    if (!canRetry || attempt >= attemptLimit) break;
+    await backoffDelay(attempt - 1);
+  }
+  return {
+    ...verdict,
+    attempts: verdict.ok ? codes.length + 1 : codes.length,
+    transient: verdict.ok !== true && TRANSIENT_CODES.has(verdict.code),
+  };
 }
 
 /**

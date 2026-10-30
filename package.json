@@ -1,7 +1,7 @@
 {
   "name": "dsh-model-connection-test",
-  "version": "1.0.6",
-  "description": "Connection tests for the models configured in Settings -> Models: one minimal chat round-trip per model, with failure codes and first-output/total latency. Credentials never leave the Host process.",
+  "version": "1.1.0",
+  "description": "Connection tests for the models configured in Settings -> Models: one minimal chat round-trip per model with connected/unstable/failed verdicts, automatic retries for transient failures, and first-output/total latency. Credentials never leave the Host process.",
   "license": "MIT",
   "type": "module",
   "keywords": ["dsh", "deepseek-harness", "plugin", "models", "connectivity"],
